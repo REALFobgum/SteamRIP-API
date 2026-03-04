@@ -30,4 +30,7 @@ async function run() {
   } catch (e) { console.error(e); }
   await browser.close();
 }
-run();
+run().catch(err => {
+  console.error("FATAL ERROR DURING STARTUP:", err);
+  process.exit(1);
+});

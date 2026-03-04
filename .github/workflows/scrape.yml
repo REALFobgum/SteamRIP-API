@@ -13,6 +13,7 @@ jobs:
         with:
           node-version: 18
       - run: npm install puppeteer-extra puppeteer-extra-plugin-stealth axios puppeteer
+      - run: npx puppeteer browsers install chrome
       - name: Run Scraper
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
@@ -24,4 +25,3 @@ jobs:
           git add lastGames.json
           git commit -m "Update game list" || exit 0
           git push
-
