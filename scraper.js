@@ -19,7 +19,6 @@ async function run() {
       return Array.from(elements).map(el => el.innerText.trim());
     });
 
-    let lastGames = fs.existsSync(DB_FILE) ? JSON.parse(fs.readFileSync(DB_FILE)) : [];
     const newGames = currentGames.filter(game => !lastGames.includes(game));
 
     if (newGames.length > 0) {
@@ -32,4 +31,3 @@ async function run() {
   await browser.close();
 }
 run();
-
