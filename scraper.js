@@ -1,4 +1,4 @@
-console.log("--- ENGINE STARTING ---"); // This MUST show up in logs
+console.log("--- ENGINE STARTING ---");
 
 const puppeteer = require('puppeteer-extra');
 const StealthPlugin = require('puppeteer-extra-plugin-stealth');
