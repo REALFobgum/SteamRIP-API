@@ -41,7 +41,8 @@ async function run() {
       await axios.post(DISCORD_WEBHOOK,{
         content: `🚀 **New Updates Found:**\n${list}`
       });
-  } catch (e) {
+    }
+  }catch (e) {
     console.error("SCRAPE FAILED:", e.message);
   } finally {
     await browser.close();
