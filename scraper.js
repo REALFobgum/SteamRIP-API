@@ -21,14 +21,16 @@ async function run() {
 
   try {
     const page = await browser.newPage();
-    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36');
+    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36');
     console.log("Heading to SteamRIP...");
-    await page.goto('https://steamrip.com', { waitUntil: 'domcontentloaded', timeout: 60000 });
-    await page.waitForSelector('article h2.entry-title a');
+    await page.goto('https://steamrip.com', { waitUntil: 'networkidle2', timeout: 60000 });
+    await page.waitForSelector('.post-items',{timeout: 15000});
 
     const currentGames = await page.evaluate(() => {
-      const elements = document.querySelectorAll('article h2.entry-title a');
-      return Array.from(elements).map(el => el.innerText.trim());
+      const elements = document.querySelectorAll('ul.posts-items li.post-item a');
+      return Array.from(elements)
+      .map(el => el.innerText.trim())
+      .filter(text => text.length > 3);
     });
 
     console.log(`Scraped ${currentGames.length} titles.`);
@@ -44,13 +46,13 @@ async function run() {
     }
   }catch (e) {
     console.error("SCRAPE FAILED:", e.message);
+    await page.screenshot({path:  'debug.png'});
   } finally {
     await browser.close();
     console.log("--- ENGINE STOPPED ---");
   }
 }
 
-// CRITICAL: Catch errors in the execution promise
 run().catch(err => {
   console.error("FATAL BOOT ERROR:", err);
   process.exit(1);
