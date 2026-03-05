@@ -16,13 +16,15 @@ async function run() {
   console.log("Launching Browser...");
   const browser = await puppeteer.launch({
     headless: "new",
-    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage','--disable-gpu']
   });
 
   try {
     const page = await browser.newPage();
+    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36');
     console.log("Heading to SteamRIP...");
-    await page.goto('https://steamrip.com', { waitUntil: 'networkidle2', timeout: 60000 });
+    await page.goto('https://steamrip.com', { waitUntil: 'domcontentloaded', timeout: 60000 });
+    await page.waitForSelector('article h2.entry-title a');
 
     const currentGames = await page.evaluate(() => {
       const elements = document.querySelectorAll('article h2.entry-title a');
@@ -35,14 +37,10 @@ async function run() {
     const newGames = currentGames.filter(game => !lastGames.includes(game));
 
     if (newGames.length > 0) {
-      console.log(`Alerting Discord about ${newGames.length} games.`);
-      for (const game of newGames) {
-        await axios.post(DISCORD_URL, { content: `🚀 **New Game on SteamRIP:** ${game}` });
-      }
-      fs.writeFileSync(DB_FILE, JSON.stringify(currentGames, null, 2));
-    } else {
-      console.log("Status: Up to date.");
-    }
+      const list = newGames.map(g => `- ${g}`).join('\n');
+      await axios.post(DISCORD_WEBHOOK,{
+        content: `🚀 **New Updates Found:**\n${list}`
+      });
   } catch (e) {
     console.error("SCRAPE FAILED:", e.message);
   } finally {
