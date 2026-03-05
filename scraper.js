@@ -23,53 +23,69 @@ async function run() {
     ]
   });
 
-  let page; // Declared outside to be accessible in catch block
+  let page;
 
   try {
     page = await browser.newPage();
 
-    // Set a modern User-Agent to avoid "Headless" detection
+    // Use a real User-Agent to bypass basic bot checks
     await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36');
 
     console.log("Heading to SteamRIP...");
     await page.goto('https://steamrip.com', { waitUntil: 'networkidle2', timeout: 60000 });
 
-    // Wait for the specific container shown in your screenshot
+    // Wait for the container shown in your screenshot
     console.log("Waiting for container: .posts-items");
     await page.waitForSelector('.posts-items', { timeout: 30000 });
 
     const currentGames = await page.evaluate(() => {
-      // Targets the links within the list items you showed
-      const elements = document.querySelectorAll('.posts-items li.post-item a');
+      /**
+       * FIX: Targeting ONLY the anchor inside .post-details
+       * This prevents grabbing the duplicate link attached to the thumbnail image.
+       */
+      const elements = document.querySelectorAll('.posts-items li.post-item .post-details a');
+
       return Array.from(elements)
       .map(el => el.innerText.trim())
-      .filter(text => text.length > 3); // Filter out UI noise or empty strings
+      .filter(text => text.length > 2); // Removes empty or UI-only strings
     });
 
-    // Remove duplicates
+    // Final safety net: Convert to a Set to remove any logic-based duplicates
     const uniqueGames = [...new Set(currentGames)];
-    console.log(`Scraped ${uniqueGames.length} titles.`);
+    console.log(`Scraped ${uniqueGames.length} unique titles.`);
 
     let lastGames = fs.existsSync(DB_FILE) ? JSON.parse(fs.readFileSync(DB_FILE)) : [];
+
+    // Filter for truly new games not found in our JSON database
     const newGames = uniqueGames.filter(game => !lastGames.includes(game));
 
     if (newGames.length > 0) {
       console.log(`Alerting Discord about ${newGames.length} new games.`);
+
       for (const game of newGames) {
-        await axios.post(DISCORD_URL, { content: `🚀 **New Game on SteamRIP:** ${game}` });
-        // Small delay to prevent Discord rate limits
-        await new Promise(r => setTimeout(r, 500));
+        try {
+          await axios.post(DISCORD_URL, {
+            content: `🚀 **New Game on SteamRIP:** ${game}`
+          });
+          // Avoid Discord Rate Limits (429)
+          await new Promise(r => setTimeout(r, 1000));
+        } catch (postError) {
+          console.error(`Failed to post ${game}:`, postError.message);
+        }
       }
+
+      // Update the database with the FULL list of unique games found this run
       fs.writeFileSync(DB_FILE, JSON.stringify(uniqueGames, null, 2));
+      console.log("Database updated.");
     } else {
-      console.log("Status: Up to date.");
+      console.log("Status: No new games found.");
     }
+
   } catch (e) {
     console.error("SCRAPE FAILED:", e.message);
-    // Take a screenshot on failure to see if Cloudflare blocked it
     if (page) {
       await page.screenshot({ path: 'debug.png' });
-      console.log("Saved debug.png for troubleshooting.");
+      console.log("Screenshot saved to debug.png");
     }
   } finally {
     await browser.close();
